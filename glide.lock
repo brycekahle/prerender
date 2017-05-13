@@ -1,0 +1,23 @@
+hash: d7427b1eb041d44a7e9d8b1c7c3dfb808f66a885ab572f9abd3a6dcfdc0dadb0
+updated: 2017-05-13T18:33:26.579762699-04:00
+imports:
+- name: github.com/felixge/httpsnoop
+  version: 1c94779cf9e8761ec6acd2a8a2596df5a0a14136
+- name: github.com/pkg/errors
+  version: 645ef00459ed84a119197bfb8d8205042c6df63d
+- name: github.com/Sirupsen/logrus
+  version: ba1b36c82c5e05c4f912a88eab0dcd91a171688f
+- name: github.com/wirepair/gcd
+  version: 1e0c933a20cea6e43638ee16ebe24f6923328c68
+  subpackages:
+  - gcdapi
+  - gcdmessage
+- name: golang.org/x/net
+  version: 84f0e6f92b10139f986b1756e149a7d9de270cdc
+  subpackages:
+  - websocket
+- name: golang.org/x/sys
+  version: f845067cf72a21fb4929b0e6a35273bd83b56396
+  subpackages:
+  - unix
+testImports: []
