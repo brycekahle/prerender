@@ -5,6 +5,11 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"context"
 
 	log "github.com/Sirupsen/logrus"
 	"github.com/brycekahle/prerender/render"
@@ -43,7 +48,21 @@ func main() {
 	}
 	l := fmt.Sprintf(":%s", port)
 	log.Printf("listening on %s", l)
-	log.Fatal(http.ListenAndServe(l, wrappedHandler))
+	server := http.Server{Addr: l, Handler: wrappedHandler}
+
+	go func() {
+		c := make(chan os.Signal, 1)
+		signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+		<-c
+		log.Info("signal caught, shutting down")
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		server.Shutdown(ctx)
+	}()
+	err = server.ListenAndServe()
+	if err != http.ErrServerClosed {
+		log.Error(err)
+	}
 }
 
 func handle(w http.ResponseWriter, r *http.Request) {

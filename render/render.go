@@ -4,6 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
+	"log"
 	"os"
 	"time"
 
@@ -33,7 +34,6 @@ type Result struct {
 }
 
 type chromeRenderer struct {
-	path     string
 	debugger *gcd.Gcd
 	timeout  time.Duration
 }
@@ -47,11 +47,13 @@ func NewRenderer() (Renderer, error) {
 	}
 
 	debugger := gcd.NewChromeDebugger()
+	debugger.SetTerminationHandler(func(reason string) {
+		log.Printf("chrome termination: %s\n", reason)
+	})
 	debugger.AddFlags([]string{"--headless", "--disable-gpu"})
 	debugger.StartProcess(chromePath, os.TempDir(), "9222")
 
 	return &chromeRenderer{
-		path:     chromePath,
 		debugger: debugger,
 		timeout:  60 * time.Second,
 	}, nil
