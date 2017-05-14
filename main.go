@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"net/http"
-	"net/url"
 	"os"
 	"os/signal"
 	"syscall"
@@ -12,8 +11,10 @@ import (
 	"context"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/brycekahle/prerender/cache"
 	"github.com/brycekahle/prerender/render"
 	"github.com/felixge/httpsnoop"
+	"github.com/go-redis/redis"
 )
 
 func main() {
@@ -25,10 +26,21 @@ func main() {
 	}
 	defer renderer.Close()
 
+	redisAddr := os.Getenv("REDIS_URL")
+	if redisAddr == "" {
+		redisAddr = "redis://localhost:6379/0"
+	}
+	opts, err := redis.ParseURL(redisAddr)
+	if err != nil {
+		log.Fatal("error parsing redis url", err)
+	}
+	client := redis.NewClient(opts)
+
 	// a custom handler is necessary because ServeMux redirects // to /
 	// in all urls, regardless of escaping
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := setRenderer(r.Context(), renderer)
+		ctx = setCache(ctx, cache.NewCache(client))
 		handle(w, r.WithContext(ctx))
 	})
 	wrappedHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -59,44 +71,9 @@ func main() {
 		defer cancel()
 		server.Shutdown(ctx)
 	}()
+
 	err = server.ListenAndServe()
 	if err != http.ErrServerClosed {
 		log.Error(err)
 	}
-}
-
-func handle(w http.ResponseWriter, r *http.Request) {
-	reqURL := r.URL.Path[1:]
-	if reqURL == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, "url is required")
-		return
-	}
-
-	u, err := url.Parse(reqURL)
-	if err != nil || !u.IsAbs() {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprint(w, "Invalid URL")
-		return
-	}
-
-	renderer := getRenderer(r.Context())
-	res, err := renderer.Render(reqURL)
-	if err != nil {
-		if err == render.ErrPageLoadTimeout {
-			w.WriteHeader(http.StatusGatewayTimeout)
-		} else {
-			w.WriteHeader(http.StatusInternalServerError)
-			fmt.Fprint(w, err)
-		}
-		return
-	}
-	if res.Status != 200 {
-		w.WriteHeader(res.Status)
-		return
-	}
-	if res.Etag != "" {
-		w.Header().Add("ETag", res.Etag)
-	}
-	fmt.Fprint(w, res.HTML)
 }

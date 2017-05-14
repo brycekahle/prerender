@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 
+	"github.com/brycekahle/prerender/cache"
 	"github.com/brycekahle/prerender/render"
 )
 
@@ -14,6 +15,7 @@ func (c contextKey) String() string {
 
 const (
 	rendererKey = contextKey("renderer")
+	cacheKey    = contextKey("cache")
 )
 
 func setRenderer(ctx context.Context, r render.Renderer) context.Context {
@@ -22,4 +24,15 @@ func setRenderer(ctx context.Context, r render.Renderer) context.Context {
 func getRenderer(ctx context.Context) render.Renderer {
 	r, _ := ctx.Value(rendererKey).(render.Renderer)
 	return r
+}
+
+func setCache(ctx context.Context, r cache.Cache) context.Context {
+	return context.WithValue(ctx, cacheKey, r)
+}
+func getCache(ctx context.Context) cache.Cache {
+	r := ctx.Value(cacheKey)
+	if r != nil {
+		return r.(cache.Cache)
+	}
+	return nil
 }
