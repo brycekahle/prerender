@@ -1,0 +1,13 @@
+sudo: required
+dist: trusty
+before_script:
+  - curl -sSL - https://dl.google.com/linux/linux_signing_key.pub | sudo apt-key add -
+  - echo "deb [arch=amd64] https://dl.google.com/linux/chrome/deb/ stable main" > /etc/apt/sources.list.d/google-chrome.list
+  - sudo apt-get update -qq
+  - sudo apt-get install google-chrome-beta -y
+language: go
+go: 1.8.1
+install: make deps
+script: make all
+env:
+  - CHROME_PATH=/usr/bin/google-chrome-beta
