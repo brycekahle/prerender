@@ -25,6 +25,11 @@ func main() {
 		log.Fatal(err)
 	}
 	defer renderer.Close()
+	if os.Getenv("RENDER_TIMEOUT") != "" {
+		if t, perr := time.ParseDuration(os.Getenv("RENDER_TIMEOUT")); perr == nil {
+			renderer.SetPageLoadTimeout(t)
+		}
+	}
 
 	redisAddr := os.Getenv("REDIS_URL")
 	if redisAddr == "" {
@@ -35,6 +40,7 @@ func main() {
 		log.Fatal("error parsing redis url", err)
 	}
 	client := redis.NewClient(opts)
+	defer client.Close()
 
 	// a custom handler is necessary because ServeMux redirects // to /
 	// in all urls, regardless of escaping
