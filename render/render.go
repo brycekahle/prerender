@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"log"
+	"net/http"
 	"os"
 	"time"
 
@@ -27,6 +28,7 @@ type Renderer interface {
 
 // Result describes the result of the rendering operation
 type Result struct {
+	URL      string
 	HTML     string
 	Status   int
 	Etag     string
@@ -70,7 +72,7 @@ func (r *chromeRenderer) Close() {
 func (r *chromeRenderer) Render(url string) (*Result, error) {
 	start := time.Now()
 	navigated := make(chan bool)
-	res := Result{}
+	res := Result{URL: url}
 	var err error
 
 	tab, err := r.debugger.NewTab()
@@ -113,7 +115,7 @@ func (r *chromeRenderer) Render(url string) (*Result, error) {
 	case <-navigated:
 	}
 
-	if res.Status == 200 {
+	if res.Status == http.StatusOK {
 		doc, err := tab.DOM.GetDocument(1, false)
 		if err != nil {
 			return nil, errors.Wrap(err, "getting tab document failed")

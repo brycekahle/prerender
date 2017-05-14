@@ -3,14 +3,22 @@ package main
 import (
 	"errors"
 	"io/ioutil"
+	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 	"time"
 
+	log "github.com/Sirupsen/logrus"
 	"github.com/brycekahle/prerender/render"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 )
+
+func TestMain(m *testing.M) {
+	log.SetLevel(log.PanicLevel)
+	os.Exit(m.Run())
+}
 
 func TestEmptyURL(t *testing.T) {
 	req := httptest.NewRequest("GET", "http://example.com/", nil)
@@ -18,7 +26,7 @@ func TestEmptyURL(t *testing.T) {
 	handle(w, req)
 
 	resp := w.Result()
-	assert.Equal(t, resp.StatusCode, 400)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
 func TestInvalidURL(t *testing.T) {
@@ -27,7 +35,7 @@ func TestInvalidURL(t *testing.T) {
 	handle(w, req)
 
 	resp := w.Result()
-	assert.Equal(t, resp.StatusCode, 400)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
 func TestRelativeURL(t *testing.T) {
@@ -36,7 +44,7 @@ func TestRelativeURL(t *testing.T) {
 	handle(w, req)
 
 	resp := w.Result()
-	assert.Equal(t, resp.StatusCode, 400)
+	assert.Equal(t, http.StatusBadRequest, resp.StatusCode)
 }
 
 type MockRenderer struct {
@@ -51,6 +59,7 @@ func (r *MockRenderer) Render(url string) (*render.Result, error) {
 	}
 
 	return &render.Result{
+		URL:      url,
 		Status:   args.Int(1),
 		HTML:     args.String(2),
 		Etag:     args.String(3),
@@ -66,13 +75,13 @@ func TestETag(t *testing.T) {
 	ctx := setRenderer(req.Context(), r)
 	w := httptest.NewRecorder()
 
-	r.On("Render", "https://netlify.com/").Return(nil, 200, "<html></html>", "etagetag", 1).Once()
+	r.On("Render", "https://netlify.com/").Return(nil, http.StatusOK, "<html></html>", "etagetag", 1).Once()
 	handle(w, req.WithContext(ctx))
 
 	resp := w.Result()
 	r.AssertExpectations(t)
-	assert.Equal(t, resp.StatusCode, 200)
-	assert.Equal(t, resp.Header.Get("Etag"), "etagetag")
+	assert.Equal(t, http.StatusOK, resp.StatusCode)
+	assert.Equal(t, "etagetag", resp.Header.Get("Etag"))
 }
 
 func TestNon200(t *testing.T) {
@@ -81,12 +90,12 @@ func TestNon200(t *testing.T) {
 	ctx := setRenderer(req.Context(), r)
 	w := httptest.NewRecorder()
 
-	r.On("Render", "https://netlify.com/").Return(nil, 404, "", "", 1).Once()
+	r.On("Render", "https://netlify.com/").Return(nil, http.StatusNotFound, "", "", 1).Once()
 	handle(w, req.WithContext(ctx))
 
 	resp := w.Result()
 	r.AssertExpectations(t)
-	assert.Equal(t, resp.StatusCode, 404)
+	assert.Equal(t, http.StatusNotFound, resp.StatusCode)
 }
 
 func TestPageLoadTimeout(t *testing.T) {
@@ -100,7 +109,7 @@ func TestPageLoadTimeout(t *testing.T) {
 
 	resp := w.Result()
 	r.AssertExpectations(t)
-	assert.Equal(t, resp.StatusCode, 504)
+	assert.Equal(t, http.StatusGatewayTimeout, resp.StatusCode)
 }
 
 func TestRenderError(t *testing.T) {
@@ -114,7 +123,7 @@ func TestRenderError(t *testing.T) {
 
 	resp := w.Result()
 	r.AssertExpectations(t)
-	assert.Equal(t, resp.StatusCode, 500)
+	assert.Equal(t, http.StatusInternalServerError, resp.StatusCode)
 }
 
 type MockCache struct {
