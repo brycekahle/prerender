@@ -6,3 +6,5 @@ import:
 - package: github.com/felixge/httpsnoop
 - package: github.com/Sirupsen/logrus
   version: ^0.11.5
+- package: github.com/stretchr/testify
+  version: ^1.1.4

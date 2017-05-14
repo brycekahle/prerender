@@ -15,6 +15,11 @@ go get github.com/brycekahle/prerender
 
 ## Usage
 
+By default, prerender will look for Chrome Canary at `/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary`.
+You can override this by specifying the `CHROME_PATH` environment variable.
+
+The `PORT` environment variable controls what port `prerender` listens on. The default value is `8000`.
+
 ```
 $ prerender
 ```

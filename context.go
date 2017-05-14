@@ -1,6 +1,10 @@
 package main
 
-import "context"
+import (
+	"context"
+
+	"github.com/brycekahle/prerender/render"
+)
 
 type contextKey string
 
@@ -12,10 +16,10 @@ const (
 	rendererKey = contextKey("renderer")
 )
 
-func setRenderer(ctx context.Context, r *Renderer) context.Context {
+func setRenderer(ctx context.Context, r render.Renderer) context.Context {
 	return context.WithValue(ctx, rendererKey, r)
 }
-func getRenderer(ctx context.Context) *Renderer {
-	r, _ := ctx.Value(rendererKey).(*Renderer)
+func getRenderer(ctx context.Context) render.Renderer {
+	r, _ := ctx.Value(rendererKey).(render.Renderer)
 	return r
 }

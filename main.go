@@ -4,25 +4,27 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 
 	log "github.com/Sirupsen/logrus"
+	"github.com/brycekahle/prerender/render"
 	"github.com/felixge/httpsnoop"
 )
 
 func main() {
-	var renderer *Renderer
+	var renderer render.Renderer
 	var err error
-	renderer, err = NewRenderer()
+	renderer, err = render.NewRenderer()
 	if err != nil {
 		log.Fatal(err)
 	}
-	defer renderer.Destroy()
+	defer renderer.Close()
 
-	// a custom handler is necessary to avoid stripping of double slashes
-	// ServeMux redirects // to / in all urls, regardless of escaping
+	// a custom handler is necessary because ServeMux redirects // to /
+	// in all urls, regardless of escaping
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := setRenderer(r.Context(), renderer)
-		render(w, r.WithContext(ctx))
+		handle(w, r.WithContext(ctx))
 	})
 	wrappedHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		m := httpsnoop.CaptureMetrics(handler, w, r)
@@ -35,10 +37,16 @@ func main() {
 		}).Infof("Completed request")
 	})
 
-	log.Fatal(http.ListenAndServe(":8000", wrappedHandler))
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8000"
+	}
+	l := fmt.Sprintf(":%s", port)
+	log.Printf("listening on %s", l)
+	log.Fatal(http.ListenAndServe(l, wrappedHandler))
 }
 
-func render(w http.ResponseWriter, r *http.Request) {
+func handle(w http.ResponseWriter, r *http.Request) {
 	reqURL := r.URL.Path[1:]
 	if reqURL == "" {
 		w.WriteHeader(http.StatusBadRequest)
@@ -56,9 +64,20 @@ func render(w http.ResponseWriter, r *http.Request) {
 	renderer := getRenderer(r.Context())
 	res, err := renderer.Render(reqURL)
 	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprint(w, err)
+		if err == render.ErrPageLoadTimeout {
+			w.WriteHeader(http.StatusGatewayTimeout)
+		} else {
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprint(w, err)
+		}
 		return
+	}
+	if res.Status != 200 {
+		w.WriteHeader(res.Status)
+		return
+	}
+	if res.Etag != "" {
+		w.Header().Add("ETag", res.Etag)
 	}
 	fmt.Fprint(w, res.HTML)
 }
