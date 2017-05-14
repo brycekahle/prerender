@@ -19,3 +19,5 @@ services:
 
   redis:
     image: redis:alpine
+    ports:
+      - 6380:6379
