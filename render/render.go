@@ -115,6 +115,16 @@ func (r *chromeRenderer) Render(url string) (*Result, error) {
 	case <-navigated:
 	}
 
+	// events may generate errors
+	if err != nil {
+		return nil, err
+	}
+
+	// page load event but no network response, assume bad DNS
+	if res.Status == 0 {
+		res.Status = http.StatusNotFound
+	}
+
 	if res.Status == http.StatusOK {
 		doc, err := tab.DOM.GetDocument(1, false)
 		if err != nil {

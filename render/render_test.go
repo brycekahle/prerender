@@ -82,3 +82,15 @@ func TestTimeout(t *testing.T) {
 	_, err := r.Render(server.URL)
 	assert.Equal(t, ErrPageLoadTimeout, err)
 }
+
+func TestNXDomain(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer server.Close()
+
+	res, err := r.Render("http://baddomainasdfasdf.com")
+	require.NoError(t, err)
+	assert.Equal(t, http.StatusNotFound, res.Status)
+	assert.Empty(t, res.HTML)
+}
